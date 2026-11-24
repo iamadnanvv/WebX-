@@ -138,6 +138,44 @@ export async function bootstrapFirstAdmin(params: {
   });
 }
 
+const PRECONFIGURED_ACCOUNTS = [
+  {
+    uid: 'admin_preconfigured_amsiwelcome',
+    name: 'Administrator',
+    email: 'amsiwelcome@gmail.com',
+    passwordHash:
+      'f1a6d0126b1b5c1c5b792f2e79835880:44a5e42eed389f1685672afeae6196ce6955adc7895fbb9b2f35dea69f12b292743f25072c72515864fc455ee049b9297ea9588db738ea6bed023327076b4137',
+    role: 'ADMIN' as const,
+  },
+  {
+    uid: 'staff_preconfigured_mestaff',
+    name: 'Staff Member',
+    email: 'mestaff@gmail.com',
+    passwordHash:
+      '8034e2514f4a05fa461d6912d7d101b3:bc1ac10c1dda61444059a1f8658903f2bcca9e02327d56a012421760a5085bf82a16ddedd0be17a342cd75e0c14c78eab9bda2f339c5b7248593bf966a92115b',
+    role: 'STAFF' as const,
+  },
+];
+
+export async function ensurePreconfiguredAccounts(): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(884202)`);
+    for (const acc of PRECONFIGURED_ACCOUNTS) {
+      await tx
+        .insert(users)
+        .values({
+          uid: acc.uid,
+          name: acc.name,
+          email: acc.email,
+          passwordHash: acc.passwordHash,
+          role: acc.role,
+          status: 'ACTIVE',
+        })
+        .onConflictDoNothing({ target: users.email });
+    }
+  });
+}
+
 export async function getOrCreateFirebaseUser(
   uid: string,
   email: string,

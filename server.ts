@@ -22,6 +22,7 @@ import {
 import {
   AuthRequest,
   bootstrapFirstAdmin,
+  ensurePreconfiguredAccounts,
   getOrCreateFirebaseUser,
   hasAnyAdminUser,
   hashPassword,
@@ -2566,6 +2567,12 @@ async function startServer() {
         res.sendFile(path.join(distDir, 'index.html'));
       });
     }
+  }
+
+  try {
+    await ensurePreconfiguredAccounts();
+  } catch (err) {
+    console.error('Failed to ensure preconfigured accounts:', err);
   }
 
   const httpServer = http.createServer(app);
