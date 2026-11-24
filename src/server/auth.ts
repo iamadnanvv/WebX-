@@ -140,9 +140,9 @@ export async function bootstrapFirstAdmin(params: {
 
 const PRECONFIGURED_ACCOUNTS = [
   {
-    uid: 'admin_preconfigured_amsiwelcome',
+    uid: 'admin_preconfigured_samsiwelcome',
     name: 'Administrator',
-    email: 'amsiwelcome@gmail.com',
+    email: 'samsiwelcome@gmail.com',
     passwordHash:
       'f1a6d0126b1b5c1c5b792f2e79835880:44a5e42eed389f1685672afeae6196ce6955adc7895fbb9b2f35dea69f12b292743f25072c72515864fc455ee049b9297ea9588db738ea6bed023327076b4137',
     role: 'ADMIN' as const,
