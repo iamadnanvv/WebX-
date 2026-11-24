@@ -3,6 +3,7 @@
   "appId": "1:828104067983:web:7f98caa43ab580f4bc99fa",
   "apiKey": "AIzaSyC4trgH4ZB3RSDvZz_VovbtglZrnXPqsyo",
   "authDomain": "august-parity-j4wsx.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-webx-83c94db1-3ff4-4f7e-8bb3-8bdce6ab0d61",
   "storageBucket": "august-parity-j4wsx.firebasestorage.app",
   "messagingSenderId": "828104067983",
   "measurementId": "",

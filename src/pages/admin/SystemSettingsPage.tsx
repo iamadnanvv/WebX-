@@ -14,6 +14,7 @@ export function SystemSettingsPage() {
     staffCanViewReports: true,
     staffCanExport: true,
     staffCanAddAccounts: false,
+    staffCanDownloadBackups: true,
   });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -218,6 +219,16 @@ export function SystemSettingsPage() {
               className="rounded border-slate-300 text-violet-700"
             />
             Allow Staff users to create new ledger accounts
+          </label>
+
+          <label className="flex items-center gap-3 text-sm text-slate-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.staffCanDownloadBackups}
+              onChange={(e) => setForm({ ...form, staffCanDownloadBackups: e.target.checked })}
+              className="rounded border-slate-300 text-violet-700"
+            />
+            Allow Staff users to generate &amp; download Monthly Data Backups (Excel, JSON, PDF)
           </label>
         </div>
 

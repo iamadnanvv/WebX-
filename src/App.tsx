@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
+  Archive,
   ArrowLeftRight,
   BookOpenCheck,
   CalendarCheck2,
@@ -60,6 +61,7 @@ import { ExchangeRatesPage } from './pages/admin/ExchangeRatesPage.tsx';
 import { ActivityLogsPage } from './pages/admin/ActivityLogsPage.tsx';
 import { SystemSettingsPage } from './pages/admin/SystemSettingsPage.tsx';
 import { SupportCenterPage } from './pages/SupportCenterPage.tsx';
+import { MonthlyBackupsPage } from './pages/MonthlyBackupsPage.tsx';
 
 interface NavItem {
   id: string;
@@ -74,6 +76,7 @@ const STAFF_NAV: NavItem[] = [
   { id: 'transactions', label: 'Transaction History', icon: History },
   { id: 'daily-ledger', label: 'Daily Ledger', icon: ClipboardList },
   { id: 'reports', label: 'Basic Reports', icon: FileBarChart2 },
+  { id: 'monthly-backups', label: 'Monthly Backups', icon: Archive },
   { id: 'support-center', label: 'Help & Support', icon: LifeBuoy },
 ];
 
@@ -148,14 +151,16 @@ function WorkspaceShell() {
 
   const isAdmin = user?.role === 'ADMIN';
   const staffReportsAllowed = Boolean(isAdmin || settings?.staffCanViewReports);
+  const staffBackupsAllowed = Boolean(isAdmin || (settings?.staffCanDownloadBackups ?? true));
 
   const availableShortcuts = useMemo(
     () =>
       getAvailableShortcuts({
         isAdmin: Boolean(isAdmin),
         staffCanViewReports: staffReportsAllowed,
+        staffCanDownloadBackups: staffBackupsAllowed,
       }),
-    [isAdmin, staffReportsAllowed]
+    [isAdmin, staffReportsAllowed, staffBackupsAllowed]
   );
 
   const navigate = useCallback((pageId: string) => {
@@ -313,6 +318,7 @@ function WorkspaceShell() {
       const permOptions = {
         isAdmin: Boolean(isAdmin),
         staffCanViewReports: staffReportsAllowed,
+        staffCanDownloadBackups: staffBackupsAllowed,
       };
 
       // Handle second key of an active G or A chord
@@ -350,6 +356,7 @@ function WorkspaceShell() {
     user,
     isAdmin,
     staffReportsAllowed,
+    staffBackupsAllowed,
     pendingChord,
     commandPaletteOpen,
     shortcutHelpOpen,
@@ -370,7 +377,9 @@ function WorkspaceShell() {
       ? 'staff-dashboard'
       : activePage === 'reports' && !staffReportsAllowed
         ? 'staff-dashboard'
-        : activePage;
+        : activePage === 'monthly-backups' && !staffBackupsAllowed
+          ? 'staff-dashboard'
+          : activePage;
 
   const allNavItems = [...STAFF_NAV, ...(isAdmin ? ADMIN_NAV : [])];
   const currentNav = allNavItems.find((n) => n.id === safePage) || STAFF_NAV[0];
@@ -390,6 +399,8 @@ function WorkspaceShell() {
         return <DailyLedgerPage />;
       case 'reports':
         return <ReportsPage key={safePage} adminMode={false} />;
+      case 'monthly-backups':
+        return <MonthlyBackupsPage />;
       case 'support-center':
         return <SupportCenterPage key={safePage} adminMode={false} onNavigate={navigate} />;
       case 'admin-dashboard':
@@ -447,13 +458,18 @@ function WorkspaceShell() {
           </div>
           <div className="space-y-0.5">
             {STAFF_NAV.filter((item) =>
-              item.id === 'reports' ? staffReportsAllowed : true
+              item.id === 'reports'
+                ? staffReportsAllowed
+                : item.id === 'monthly-backups'
+                  ? staffBackupsAllowed
+                  : true
             ).map((item) => {
               const Icon = item.icon;
               const active = safePage === item.id;
               const shortcut = getShortcutForPage(item.id, {
                 isAdmin: Boolean(isAdmin),
                 staffCanViewReports: staffReportsAllowed,
+                staffCanDownloadBackups: staffBackupsAllowed,
               });
               return (
                 <button

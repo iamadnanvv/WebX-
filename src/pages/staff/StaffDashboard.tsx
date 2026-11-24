@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { ArrowRight, PlusCircle } from 'lucide-react';
+import { Archive, ArrowRight, PlusCircle } from 'lucide-react';
 import { useAuth, useRealtimeRefresh } from '../../context/AuthContext.tsx';
 import { CurrencyDualDisplay } from '../../components/CurrencyValue.tsx';
 import { CurrencyConverterWidget } from '../../components/CurrencyConverterWidget.tsx';
@@ -19,7 +19,7 @@ interface StaffDashboardProps {
 }
 
 export function StaffDashboard({ onNavigate }: StaffDashboardProps) {
-  const { apiFetch, primaryCurrency } = useAuth();
+  const { apiFetch, primaryCurrency, settings, user } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -94,14 +94,26 @@ export function StaffDashboard({ onNavigate }: StaffDashboardProps) {
             </span>
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => onNavigate('new-entry')}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium rounded-md transition-colors whitespace-nowrap shrink-0"
-        >
-          <PlusCircle className="w-4 h-4" />
-          Log New Entry
-        </button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {(user?.role === 'ADMIN' || (settings?.staffCanDownloadBackups ?? true)) && (
+            <button
+              type="button"
+              onClick={() => onNavigate('monthly-backups')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-md transition-colors whitespace-nowrap"
+            >
+              <Archive className="w-4 h-4 text-blue-700" />
+              Monthly Backups
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onNavigate('new-entry')}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium rounded-md transition-colors whitespace-nowrap"
+          >
+            <PlusCircle className="w-4 h-4" />
+            Log New Entry
+          </button>
+        </div>
       </div>
 
       {/* 4-column KPI strip */}

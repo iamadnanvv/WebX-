@@ -10,7 +10,8 @@ export type RealtimeEventType =
   | 'staff:updated'
   | 'settings:updated'
   | 'activity:updated'
-  | 'support:updated';
+  | 'support:updated'
+  | 'backups:updated';
 
 export interface RealtimeEvent {
   type: RealtimeEventType;

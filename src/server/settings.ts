@@ -11,6 +11,7 @@ export interface SystemSettings {
   staffCanViewReports: boolean;
   staffCanExport: boolean;
   staffCanAddAccounts: boolean;
+  staffCanDownloadBackups: boolean;
 }
 
 export const DEFAULT_SETTINGS: SystemSettings = {
@@ -23,6 +24,7 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   staffCanViewReports: true,
   staffCanExport: true,
   staffCanAddAccounts: false,
+  staffCanDownloadBackups: true,
 };
 
 export async function getSystemSettings(): Promise<SystemSettings> {
@@ -55,6 +57,10 @@ export async function getSystemSettings(): Promise<SystemSettings> {
         map.has('staffCanAddAccounts')
           ? map.get('staffCanAddAccounts') === 'true'
           : DEFAULT_SETTINGS.staffCanAddAccounts,
+      staffCanDownloadBackups:
+        map.has('staffCanDownloadBackups')
+          ? map.get('staffCanDownloadBackups') === 'true'
+          : DEFAULT_SETTINGS.staffCanDownloadBackups,
     };
   } catch (error) {
     console.error('Failed to read system settings:', error);

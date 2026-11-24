@@ -38,6 +38,7 @@ describe('WebX Global Keyboard Shortcuts', () => {
       'transactions',
       'daily-ledger',
       'reports',
+      'monthly-backups',
       'support-center',
       'admin-dashboard',
       'admin-staff',
@@ -60,14 +61,23 @@ describe('WebX Global Keyboard Shortcuts', () => {
     const staffNoReports = getAvailableShortcuts({
       isAdmin: false,
       staffCanViewReports: false,
+      staffCanDownloadBackups: false,
     });
     expect(staffNoReports.some((s) => s.adminOnly)).toBe(false);
     expect(staffNoReports.some((s) => s.pageId === 'reports')).toBe(false);
+    expect(staffNoReports.some((s) => s.pageId === 'monthly-backups')).toBe(false);
     expect(
       matchChordShortcut('a', 's', { isAdmin: false, staffCanViewReports: true })
     ).toBeUndefined();
     expect(
       matchChordShortcut('g', 'r', { isAdmin: false, staffCanViewReports: false })
+    ).toBeUndefined();
+    expect(
+      matchChordShortcut('g', 'b', {
+        isAdmin: false,
+        staffCanViewReports: true,
+        staffCanDownloadBackups: false,
+      })
     ).toBeUndefined();
 
     const staffWithReports = getAvailableShortcuts({
@@ -75,6 +85,10 @@ describe('WebX Global Keyboard Shortcuts', () => {
       staffCanViewReports: true,
     });
     expect(staffWithReports.some((s) => s.pageId === 'reports')).toBe(true);
+    expect(staffWithReports.some((s) => s.pageId === 'monthly-backups')).toBe(true);
+    expect(
+      matchChordShortcut('g', 'b', { isAdmin: false, staffCanViewReports: true })?.pageId
+    ).toBe('monthly-backups');
     expect(
       matchChordShortcut('g', 'r', { isAdmin: false, staffCanViewReports: true })?.pageId
     ).toBe('reports');

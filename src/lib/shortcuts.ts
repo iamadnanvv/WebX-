@@ -26,6 +26,7 @@ export interface ShortcutDefinition {
   actionId?: ShortcutActionId;
   adminOnly?: boolean;
   requiresStaffReports?: boolean;
+  requiresStaffBackups?: boolean;
   keywords?: string[];
 }
 
@@ -91,6 +92,17 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     pageId: 'reports',
     requiresStaffReports: true,
     keywords: ['pdf', 'excel', 'export', 'statement'],
+  },
+  {
+    id: 'nav-monthly-backups',
+    label: 'Monthly Backups',
+    description: 'Download end-of-month Excel, JSON & PDF platform archives',
+    category: 'STAFF',
+    keys: ['G', 'B'],
+    chord: ['g', 'b'],
+    pageId: 'monthly-backups',
+    requiresStaffBackups: true,
+    keywords: ['backup', 'archive', 'monthly', 'export', 'json', 'xlsx'],
   },
   {
     id: 'nav-support-center',
@@ -333,10 +345,15 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
 export function getAvailableShortcuts(options: {
   isAdmin: boolean;
   staffCanViewReports: boolean;
+  staffCanDownloadBackups?: boolean;
 }): ShortcutDefinition[] {
+  const backupsAllowed = options.staffCanDownloadBackups ?? true;
   return SHORTCUT_DEFINITIONS.filter((item) => {
     if (item.adminOnly && !options.isAdmin) return false;
     if (item.requiresStaffReports && !options.isAdmin && !options.staffCanViewReports) {
+      return false;
+    }
+    if (item.requiresStaffBackups && !options.isAdmin && !backupsAllowed) {
       return false;
     }
     return true;
@@ -345,7 +362,11 @@ export function getAvailableShortcuts(options: {
 
 export function getShortcutForPage(
   pageId: string,
-  options: { isAdmin: boolean; staffCanViewReports: boolean }
+  options: {
+    isAdmin: boolean;
+    staffCanViewReports: boolean;
+    staffCanDownloadBackups?: boolean;
+  }
 ): ShortcutDefinition | undefined {
   return getAvailableShortcuts(options).find(
     (item) => item.pageId === pageId && Boolean(item.chord)
@@ -376,7 +397,11 @@ export function hasOpenModalDialog(): boolean {
 export function matchChordShortcut(
   firstKey: string,
   secondKey: string,
-  options: { isAdmin: boolean; staffCanViewReports: boolean }
+  options: {
+    isAdmin: boolean;
+    staffCanViewReports: boolean;
+    staffCanDownloadBackups?: boolean;
+  }
 ): ShortcutDefinition | undefined {
   const k1 = firstKey.toLowerCase();
   const k2 = secondKey.toLowerCase();
@@ -388,7 +413,11 @@ export function matchChordShortcut(
 export function matchSingleShortcut(
   key: string,
   shiftKey: boolean,
-  options: { isAdmin: boolean; staffCanViewReports: boolean }
+  options: {
+    isAdmin: boolean;
+    staffCanViewReports: boolean;
+    staffCanDownloadBackups?: boolean;
+  }
 ): ShortcutDefinition | undefined {
   if (key === '?') {
     return getAvailableShortcuts(options).find((item) => item.singleKey === '?');

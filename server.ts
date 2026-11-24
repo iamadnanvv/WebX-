@@ -56,6 +56,17 @@ import {
   ReportCurrencyView,
   ReportPayload,
 } from './src/server/reports.ts';
+import {
+  createOrRefreshMonthlyBackup,
+  generateMonthlyBackupExcel,
+  generateMonthlyBackupJson,
+  generateMonthlyBackupPdf,
+  getMonthlyBackupPayloadForUser,
+  isValidMonthString,
+  listMonthlyBackupOverview,
+  startMonthlyBackupScheduler,
+  type BackupDownloadFormat,
+} from './src/server/backups.ts';
 import { broadcastRealtimeEvent, initRealtimeServer } from './src/server/realtime.ts';
 import {
   SUPPORT_CATEGORIES,
@@ -1491,6 +1502,7 @@ const settingsPatchSchema = z.object({
   staffCanViewReports: z.boolean().optional(),
   staffCanExport: z.boolean().optional(),
   staffCanAddAccounts: z.boolean().optional(),
+  staffCanDownloadBackups: z.boolean().optional(),
 });
 
 app.patch('/api/admin/settings', requireAuth, requireAdmin, async (req: AuthRequest, res) => {
@@ -1791,6 +1803,170 @@ app.get('/api/reports/export/excel', requireAuth, async (req: AuthRequest, res) 
     }
     console.error('Failed to export Excel:', error);
     res.status(500).json({ error: 'Failed to generate Excel workbook' });
+  }
+});
+
+// ============================================================================
+// MONTHLY DATA BACKUPS & END-OF-MONTH ARCHIVES
+// ============================================================================
+
+app.get('/api/backups/monthly', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const sysSettings = await getSystemSettings();
+    if (req.user!.role !== 'ADMIN' && !sysSettings.staffCanDownloadBackups) {
+      res.status(403).json({
+        error: 'Monthly backup downloads are currently disabled for staff accounts.',
+      });
+      return;
+    }
+
+    const overview = await listMonthlyBackupOverview();
+    res.json(overview);
+  } catch (error) {
+    console.error('Failed to list monthly backups:', error);
+    res.status(500).json({ error: 'Failed to load monthly backup archives' });
+  }
+});
+
+const generateBackupSchema = z.object({
+  month: z
+    .string()
+    .trim()
+    .refine((m) => isValidMonthString(m), 'Month must use YYYY-MM format'),
+  forceRebuild: z.boolean().optional(),
+});
+
+app.post('/api/backups/monthly/generate', requireAuth, async (req: AuthRequest, res) => {
+  const parsed = generateBackupSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid backup month' });
+    return;
+  }
+
+  try {
+    const sysSettings = await getSystemSettings();
+    if (req.user!.role !== 'ADMIN' && !sysSettings.staffCanDownloadBackups) {
+      res.status(403).json({
+        error: 'Monthly backup downloads are currently disabled for staff accounts.',
+      });
+      return;
+    }
+
+    if (parsed.data.forceRebuild && req.user!.role !== 'ADMIN') {
+      res.status(403).json({
+        error: 'Only Administrators can rebuild a locked historical monthly archive.',
+      });
+      return;
+    }
+
+    const result = await createOrRefreshMonthlyBackup({
+      month: parsed.data.month,
+      userId: req.user!.id,
+      generationType: 'MANUAL',
+      forceRebuild: Boolean(parsed.data.forceRebuild && req.user!.role === 'ADMIN'),
+    });
+
+    res.status(201).json({
+      archive: {
+        id: result.record.id,
+        month: result.record.month,
+        monthLabel: result.snapshot.monthLabel,
+        periodStart: result.record.periodStart,
+        periodEnd: result.record.periodEnd,
+        status: result.record.status,
+        generationType: result.record.generationType,
+        accountCount: result.record.accountCount,
+        transactionCount: result.record.transactionCount,
+        dailyClosingCount: result.record.dailyClosingCount,
+        exchangeRateCount: result.record.exchangeRateCount,
+        supportTicketCount: result.record.supportTicketCount,
+        totalCreditsAed: result.record.totalCreditsAed,
+        totalDebitsAed: result.record.totalDebitsAed,
+        totalCreditsInr: result.record.totalCreditsInr,
+        totalDebitsInr: result.record.totalDebitsInr,
+        closingBalanceAed: result.record.closingBalanceAed,
+        sha256Checksum: result.record.sha256Checksum,
+        createdAt: result.record.createdAt,
+        updatedAt: result.record.updatedAt,
+      },
+      wasLockedPreserved: result.wasLockedPreserved,
+    });
+  } catch (error: any) {
+    console.error('Failed to generate monthly backup:', error);
+    res.status(500).json({ error: error?.message || 'Failed to generate monthly backup archive' });
+  }
+});
+
+app.get('/api/backups/monthly/:month/download', requireAuth, async (req: AuthRequest, res) => {
+  const month = String(req.params.month || '').trim();
+  if (!isValidMonthString(month)) {
+    res.status(400).json({ error: 'Invalid backup month (expected YYYY-MM)' });
+    return;
+  }
+
+  const rawFormat = String(req.query.format || 'xlsx').toLowerCase();
+  if (rawFormat !== 'xlsx' && rawFormat !== 'json' && rawFormat !== 'pdf') {
+    res.status(400).json({ error: 'Unsupported format (expected xlsx, json, or pdf)' });
+    return;
+  }
+  const format: BackupDownloadFormat = rawFormat;
+
+  try {
+    const sysSettings = await getSystemSettings();
+    if (req.user!.role !== 'ADMIN' && !sysSettings.staffCanDownloadBackups) {
+      res.status(403).json({
+        error: 'Monthly backup downloads are currently disabled for staff accounts.',
+      });
+      return;
+    }
+
+    const { snapshot, checksum } = await getMonthlyBackupPayloadForUser({
+      month,
+      user: {
+        id: req.user!.id,
+        email: req.user!.email,
+        role: req.user!.role,
+      },
+    });
+
+    let buffer: Buffer;
+    let contentType: string;
+    if (format === 'json') {
+      buffer = generateMonthlyBackupJson(snapshot, checksum);
+      contentType = 'application/json; charset=utf-8';
+    } else if (format === 'pdf') {
+      buffer = await generateMonthlyBackupPdf(snapshot, checksum);
+      contentType = 'application/pdf';
+    } else {
+      buffer = await generateMonthlyBackupExcel(snapshot, checksum);
+      contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    }
+
+    await logActivity({
+      userId: req.user!.id,
+      action: 'DOWNLOAD_MONTHLY_BACKUP',
+      entity: 'MonthlyBackup',
+      entityId: month,
+      afterSnapshot: {
+        month,
+        format,
+        sha256Checksum: checksum,
+        transactionCount: snapshot.totals.transactionCount,
+      },
+      reason: `Downloaded ${month} monthly backup (${format.toUpperCase()})`,
+    });
+    broadcastRealtimeEvent('activity:updated', { adminOnly: true });
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('X-Backup-Checksum', checksum);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="webx-monthly-backup-${month}.${format}"`
+    );
+    res.send(buffer);
+  } catch (error: any) {
+    console.error('Failed to download monthly backup:', error);
+    res.status(500).json({ error: error?.message || 'Failed to prepare monthly backup download' });
   }
 });
 
@@ -2399,6 +2575,7 @@ async function startServer() {
   httpServer.listen(port, '0.0.0.0', () => {
     console.log(`WebX server & WebSocket hub listening on http://0.0.0.0:${port}`);
     startExchangeRateScheduler();
+    startMonthlyBackupScheduler();
   });
 }
 

@@ -155,6 +155,40 @@ export const supportMessages = pgTable('support_messages', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const monthlyBackups = pgTable('monthly_backups', {
+  id: serial('id').primaryKey(),
+  month: text('month').notNull().unique(), // YYYY-MM (Asia/Dubai GST)
+  periodStart: text('period_start').notNull(), // YYYY-MM-01
+  periodEnd: text('period_end').notNull(), // YYYY-MM-DD
+  status: text('status').notNull().default('AVAILABLE'), // 'AVAILABLE' | 'SNAPSHOT_LOCKED'
+  generationType: text('generation_type').notNull().default('MANUAL'), // 'AUTO_MONTH_END' | 'MANUAL'
+  accountCount: integer('account_count').notNull().default(0),
+  transactionCount: integer('transaction_count').notNull().default(0),
+  dailyClosingCount: integer('daily_closing_count').notNull().default(0),
+  exchangeRateCount: integer('exchange_rate_count').notNull().default(0),
+  supportTicketCount: integer('support_ticket_count').notNull().default(0),
+  totalCreditsAed: numeric('total_credits_aed', { precision: 18, scale: 2 })
+    .notNull()
+    .default('0.00'),
+  totalDebitsAed: numeric('total_debits_aed', { precision: 18, scale: 2 })
+    .notNull()
+    .default('0.00'),
+  totalCreditsInr: numeric('total_credits_inr', { precision: 18, scale: 2 })
+    .notNull()
+    .default('0.00'),
+  totalDebitsInr: numeric('total_debits_inr', { precision: 18, scale: 2 })
+    .notNull()
+    .default('0.00'),
+  closingBalanceAed: numeric('closing_balance_aed', { precision: 18, scale: 2 })
+    .notNull()
+    .default('0.00'),
+  sha256Checksum: text('sha256_checksum').notNull(),
+  snapshotData: jsonb('snapshot_data').notNull(),
+  generatedById: integer('generated_by_id').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   transactions: many(transactions),
   activityLogs: many(activityLogs),
@@ -217,6 +251,13 @@ export const supportMessagesRelations = relations(supportMessages, ({ one }) => 
   }),
   senderUser: one(users, {
     fields: [supportMessages.senderUserId],
+    references: [users.id],
+  }),
+}));
+
+export const monthlyBackupsRelations = relations(monthlyBackups, ({ one }) => ({
+  generatedBy: one(users, {
+    fields: [monthlyBackups.generatedById],
     references: [users.id],
   }),
 }));
