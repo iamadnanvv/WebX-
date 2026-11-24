@@ -1,0 +1,6 @@
+{
+  "name": "WebX",
+  "description": "Multi-currency AED/INR bookkeeping platform with Staff and Admin role-based portals, automated ledger balances, daily closing locks, exchange-rate management, and audit exports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
